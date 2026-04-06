@@ -1,0 +1,61 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Thêm dòng này nếu lỗi vẫn còn để Prisma biết em dùng kết nối trực tiếp
+  // directUrl = env("DATABASE_URL") 
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Bản Schema tổng lực đã bổ sung Comment
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  phone     String?
+  role      String    @default("USER")
+  bookings  Booking[]
+  comments  Comment[] // THÊM DÒNG NÀY
+}
+
+model Room {
+  id           Int       @id @default(autoincrement())
+  tenPhong     String
+  khach        Int
+  giaTien      Int
+  moTa         String?
+  hinhAnh      String?
+  bookings     Booking[] 
+  comments     Comment[] // THÊM DÒNG NÀY
+  @@index([tenPhong]) 
+}
+
+model Booking {
+  id           Int      @id @default(autoincrement())
+  ngayDen      DateTime
+  ngayDi       DateTime
+  soLuongKhach Int
+  userId       Int
+  user         User     @relation(fields: [userId], references: id)
+  roomId       Int
+  room         Room     @relation(fields: [roomId], references: id)
+  comment      Comment? // THÊM DÒNG NÀY (Một booking có thể có 1 comment hoặc không)
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  noiDung   String
+  sao       Int      @default(5)
+  ngayBinhLuan DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: id)
+  roomId    Int
+  room      Room     @relation(fields: [roomId], references: id)
+  bookingId Int?     @unique
+  booking   Booking? @relation(fields: [bookingId], references: id)
+}
