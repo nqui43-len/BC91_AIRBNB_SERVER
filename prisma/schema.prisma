@@ -3,15 +3,12 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // Thêm dòng này nếu lỗi vẫn còn để Prisma biết em dùng kết nối trực tiếp
-  // directUrl = env("DATABASE_URL") 
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// Bản Schema tổng lực đã bổ sung Comment
 model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
@@ -20,7 +17,7 @@ model User {
   phone     String?
   role      String    @default("USER")
   bookings  Booking[]
-  comments  Comment[] // THÊM DÒNG NÀY
+  comments  Comment[]
 }
 
 model Room {
@@ -30,8 +27,9 @@ model Room {
   giaTien      Int
   moTa         String?
   hinhAnh      String?
+  viTri        String?
   bookings     Booking[] 
-  comments     Comment[] // THÊM DÒNG NÀY
+  comments     Comment[]
   @@index([tenPhong]) 
 }
 
@@ -44,7 +42,7 @@ model Booking {
   user         User     @relation(fields: [userId], references: id)
   roomId       Int
   room         Room     @relation(fields: [roomId], references: id)
-  comment      Comment? // THÊM DÒNG NÀY (Một booking có thể có 1 comment hoặc không)
+  comment      Comment?
 }
 
 model Comment {

@@ -1,7 +1,7 @@
 // src/index.js
 const express = require("express");
 const bcrypt = require("bcrypt");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 require("dotenv").config();
 
@@ -47,13 +47,13 @@ app.post("/auth/register", async (req, res) => {
 });
 
 // API Đăng nhập & Cấp thẻ JWT
-app.post('/auth/login', async (req, res) => {
+app.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     // 1. Kiểm tra
     const user = await prisma.user.findUnique({
-      where: { email: email }
+      where: { email: email },
     });
 
     if (!user) {
@@ -64,27 +64,30 @@ app.post('/auth/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Email hoặc mật khẩu nhập không đúng! Vui lòng thử lại." });
+      return res
+        .status(401)
+        .json({
+          message: "Email hoặc mật khẩu nhập không đúng! Vui lòng thử lại.",
+        });
     }
 
     // 3. Mật khẩu ĐÚNG -> Tiến hành in thẻ (Tạo JWT)
     // Payload: Chứa thông tin không nhạy cảm (ID và Quyền)
     const payload = {
       userId: user.id,
-      role: user.role
+      role: user.role,
     };
 
     // Tạo chữ ký (Signature) bằng SECRET_KEY và quy định thẻ này có hạn 1 ngày
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: '1d'
+      expiresIn: "1d",
     });
 
     // 4. Trả thẻ cho khách hàng
     res.status(200).json({
       message: "Đăng nhập thành công!",
-      token: token
+      token: token,
     });
-
   } catch (error) {
     res.status(500).json({ message: "Lỗi Server", error: error.message });
   }
@@ -98,7 +101,9 @@ const kiemTraTheTu = (req, res, next) => {
 
   // trường hợp không có JWT
   if (!tokenTuKhach) {
-    return res.status(401).json({ message: "Vui lòng xuất trình thẻ (Token)!" });
+    return res
+      .status(401)
+      .json({ message: "Vui lòng xuất trình thẻ (Token)!" });
   }
 
   try {
@@ -112,14 +117,14 @@ const kiemTraTheTu = (req, res, next) => {
     req.user = thongTinTrongThe;
 
     // 5. Mở cửa cho khách đi tiếp vào trong API (Cực kỳ quan trọng)
-    next(); 
+    next();
   } catch (error) {
     return res.status(403).json({ message: "Thẻ giả hoặc đã hết hạn!" });
   }
 };
 
 // API Lấy thông tin cá nhân (Protected API, chỉ người có thẻ mới vào được)
-app.get('/auth/profile', kiemTraTheTu, async (req, res) => {
+app.get("/auth/profile", kiemTraTheTu, async (req, res) => {
   try {
     // Đã biết người dùng nào đang vào API này thông qua req.user (do middleware gắn vào)
     const userId = req.user.userId;
@@ -127,7 +132,7 @@ app.get('/auth/profile', kiemTraTheTu, async (req, res) => {
     // Vào Database lấy thông tin người dùng (trừ password)
     const thongTinKhach = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, role: true } // Không lấy password
+      select: { id: true, email: true, name: true, role: true }, // Không lấy password
     });
 
     res.status(200).json(thongTinKhach);
@@ -137,7 +142,7 @@ app.get('/auth/profile', kiemTraTheTu, async (req, res) => {
 });
 
 // API Đặt phòng (BẮT BUỘC CÓ THẺ)
-app.post('/bookings', kiemTraTheTu, async (req, res) => {
+app.post("/bookings", kiemTraTheTu, async (req, res) => {
   try {
     // 1. Lấy dữ liệu Frontend gửi lên từ Body
     const { roomId, ngayDen, ngayDi, soLuongKhach } = req.body;
@@ -152,17 +157,18 @@ app.post('/bookings', kiemTraTheTu, async (req, res) => {
         userId: userId,
         ngayDen: new Date(ngayDen),
         ngayDi: new Date(ngayDi),
-        soLuongKhach: Number(soLuongKhach)
-      }
+        soLuongKhach: Number(soLuongKhach),
+      },
     });
 
     res.status(201).json({
       message: "Đặt phòng thành công! Chúc quý khách kỳ nghỉ vui vẻ.",
-      booking: newBooking
+      booking: newBooking,
     });
-
   } catch (error) {
-    res.status(500).json({ message: "Lỗi khi đặt phòng", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi đặt phòng", error: error.message });
   }
 });
 
@@ -173,11 +179,24 @@ app.listen(PORT, () => {
 app.get("/rooms", async (req, res) => {
   try {
     const maxPrice = Number(req.query.maxPrice);
-    const rooms = await prisma.room.findMany(
-      maxPrice ? { where: { giaTien: { lte: maxPrice } } } : {},
-    );
+    const location = req.query.location;
+    let dieuKienLoc = {};
+    if (maxPrice) {
+      dieuKienLoc.giaTien = { lte: maxPrice };
+    }
+    if (location) {
+      dieuKienLoc.viTri = {
+        contains: location,
+        mode: "insensitive",
+      };
+    }
+    const rooms = await prisma.room.findMany({
+      where: dieuKienLoc,
+    });
     res.status(200).json(rooms);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi khi lấy danh sách phòng" });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi lấy danh sách phòng", error: error.message });
   }
 });
