@@ -64,11 +64,9 @@ app.post("/auth/login", async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res
-        .status(401)
-        .json({
-          message: "Email hoặc mật khẩu nhập không đúng! Vui lòng thử lại.",
-        });
+      return res.status(401).json({
+        message: "Email hoặc mật khẩu nhập không đúng! Vui lòng thử lại.",
+      });
     }
 
     // 3. Mật khẩu ĐÚNG -> Tiến hành in thẻ (Tạo JWT)
@@ -144,17 +142,13 @@ app.get("/auth/profile", kiemTraTheTu, async (req, res) => {
 // API Đặt phòng (BẮT BUỘC CÓ THẺ)
 app.post("/bookings", kiemTraTheTu, async (req, res) => {
   try {
-    // 1. Lấy dữ liệu Frontend gửi lên từ Body
-    const { roomId, ngayDen, ngayDi, soLuongKhach } = req.body;
-
-    // 2. Lấy ID của khách hàng từ thẻ JWT (đã được middleware gắn vào req.user)
+    const { maPhong, ngayDen, ngayDi, soLuongKhach } = req.body;
     const userId = req.user.userId;
 
-    // 3. Tiến hành tạo đơn đặt phòng trong Database
     const newBooking = await prisma.booking.create({
       data: {
-        roomId: Number(roomId),
-        userId: userId,
+        maPhong: Number(maPhong),
+        maNguoiDung: userId,
         ngayDen: new Date(ngayDen),
         ngayDi: new Date(ngayDi),
         soLuongKhach: Number(soLuongKhach),
@@ -181,18 +175,25 @@ app.get("/rooms", async (req, res) => {
     const maxPrice = Number(req.query.maxPrice);
     const location = req.query.location;
     let dieuKienLoc = {};
-    if (maxPrice) {
-      dieuKienLoc.giaTien = { lte: maxPrice };
-    }
+
+    if (maxPrice) dieuKienLoc.giaTien = { lte: maxPrice };
+
     if (location) {
-      dieuKienLoc.viTri = {
-        contains: location,
-        mode: "insensitive",
+      dieuKienLoc.location = {
+        tinhThanh: {
+          contains: location,
+          mode: "insensitive",
+        },
       };
     }
+
     const rooms = await prisma.room.findMany({
       where: dieuKienLoc,
+      include: {
+        location: true,
+      },
     });
+
     res.status(200).json(rooms);
   } catch (error) {
     res

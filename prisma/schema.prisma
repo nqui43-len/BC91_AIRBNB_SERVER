@@ -9,51 +9,84 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// 1. BẢNG NGƯỜI DÙNG
 model User {
   id        Int       @id @default(autoincrement())
+  name      String?
   email     String    @unique
-  password  String
-  name      String
+  password  String?
   phone     String?
-  role      String    @default("USER")
+  birthday  String?
+  gender    Boolean?
+  role      String?   @default("USER")
+  // Quan hệ 1-Nhiều: 1 User có thể đặt nhiều Phòng và viết nhiều Bình luận
   bookings  Booking[]
   comments  Comment[]
 }
 
+// 2. BẢNG VỊ TRÍ (Tỉnh/Thành phố/Quốc gia)
+model Location {
+  id        Int       @id @default(autoincrement())
+  tenViTri  String?
+  tinhThanh String?
+  quocGia   String?
+  hinhAnh   String?
+  // Quan hệ 1-Nhiều: 1 Vị trí có thể có nhiều Căn phòng
+  rooms     Room[]
+}
+
+// 3. BẢNG PHÒNG (Nhiều thuộc tính tiện ích nhất)
 model Room {
-  id           Int       @id @default(autoincrement())
-  tenPhong     String
-  khach        Int
-  giaTien      Int
-  moTa         String?
-  hinhAnh      String?
-  viTri        String?
-  bookings     Booking[] 
-  comments     Comment[]
-  @@index([tenPhong]) 
+  id        Int       @id @default(autoincrement())
+  tenPhong  String?
+  khach     Int?
+  phongNgu  Int?
+  giuong    Int?
+  phongTam  Int?
+  moTa      String?
+  giaTien   Int?
+  mayGiat   Boolean?
+  banLa     Boolean?
+  tivi      Boolean?
+  dieuHoa   Boolean?
+  wifi      Boolean?
+  bep       Boolean?
+  doXe      Boolean?
+  hoBoi     Boolean?
+  banUi     Boolean?
+  hinhAnh   String?
+  // Khóa ngoại liên kết với bảng Location
+  maViTri   Int?
+  location  Location? @relation(fields: [maViTri], references: [id], onDelete: SetNull)
+  // Quan hệ 1-Nhiều: 1 Phòng có thể được Đặt nhiều lần và có nhiều Bình luận
+  bookings  Booking[]
+  comments  Comment[]
 }
 
+// 4. BẢNG ĐẶT PHÒNG
 model Booking {
-  id           Int      @id @default(autoincrement())
-  ngayDen      DateTime
-  ngayDi       DateTime
-  soLuongKhach Int
-  userId       Int
-  user         User     @relation(fields: [userId], references: id)
-  roomId       Int
-  room         Room     @relation(fields: [roomId], references: id)
-  comment      Comment?
+  id           Int       @id @default(autoincrement())
+  ngayDen      DateTime?
+  ngayDi       DateTime?
+  soLuongKhach Int?
+  // Khóa ngoại liên kết với bảng Room
+  maPhong      Int?
+  room         Room?     @relation(fields: [maPhong], references: [id], onDelete: Cascade)
+  // Khóa ngoại liên kết với bảng User
+  maNguoiDung  Int?
+  user         User?     @relation(fields: [maNguoiDung], references: [id], onDelete: Cascade)
 }
 
+// 5. BẢNG BÌNH LUẬN
 model Comment {
-  id        Int      @id @default(autoincrement())
-  noiDung   String
-  sao       Int      @default(5)
-  ngayBinhLuan DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: id)
-  roomId    Int
-  room      Room     @relation(fields: [roomId], references: id)
-  bookingId Int?     @unique
-  booking   Booking? @relation(fields: [bookingId], references: id)
+  id              Int       @id @default(autoincrement())
+  ngayBinhLuan    DateTime  @default(now())
+  noiDung         String?
+  saoBinhLuan     Int?
+  // Khóa ngoại liên kết với bảng Room
+  maPhong         Int?
+  room            Room?     @relation(fields: [maPhong], references: [id], onDelete: Cascade)
+  // Khóa ngoại liên kết với bảng User
+  maNguoiBinhLuan Int?
+  user            User?     @relation(fields: [maNguoiBinhLuan], references: [id], onDelete: Cascade)
 }

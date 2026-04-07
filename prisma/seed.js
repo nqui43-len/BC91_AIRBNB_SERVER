@@ -1,16 +1,19 @@
+// prisma/seed.js
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Bắt đầu gieo mầm dữ liệu...");
-  // Dọn dẹp dữ liệu cũ (Lưu ý: Phải xóa bảng con (Booking) trước, rồi mới xóa bảng cha (User, Room))
+  console.log("🌱 Bắt đầu gieo mầm dữ liệu mới...");
+  
+  // 1. Dọn dẹp dữ liệu cũ (Xóa từ bảng con đến bảng cha)
   await prisma.booking.deleteMany();
   await prisma.comment.deleteMany();
-  await prisma.user.deleteMany();
   await prisma.room.deleteMany();
+  await prisma.location.deleteMany();
+  await prisma.user.deleteMany();
   console.log("🧹 Đã dọn dẹp sạch sẽ Database!");
 
-  // 1. Tạo 1 Người dùng mẫu
+  // 2. Tạo 1 Người dùng mẫu
   const user1 = await prisma.user.create({
     data: {
       email: "khachhang_vip@gmail.com",
@@ -21,105 +24,97 @@ async function main() {
   });
   console.log("✅ Đã tạo User:", user1.name);
 
-  // 2. Tạo Căn phòng mẫu (Dữ liệu giống Airbnb em gửi)
+  // 3. Tạo các Vị trí (Location) mẫu trước
+  console.log("Đang tạo các địa điểm du lịch...");
+  const locSapa = await prisma.location.create({ data: { tenViTri: "Bản Tả Van", tinhThanh: "Sapa", quocGia: "Việt Nam" } });
+  const locDaLat = await prisma.location.create({ data: { tenViTri: "Trung tâm", tinhThanh: "Đà Lạt", quocGia: "Việt Nam" } });
+  const locNhaTrang = await prisma.location.create({ data: { tenViTri: "Biển Trần Phú", tinhThanh: "Nha Trang", quocGia: "Việt Nam" } });
+  const locHCM = await prisma.location.create({ data: { tenViTri: "Quận 1", tinhThanh: "Hồ Chí Minh", quocGia: "Việt Nam" } });
+  const locPhuQuoc = await prisma.location.create({ data: { tenViTri: "Bãi Dài", tinhThanh: "Phú Quốc", quocGia: "Việt Nam" } });
+
+  // 4. Tạo Căn phòng mẫu (Gắn mã vị trí vào từng phòng)
   console.log("Đang xây dựng danh sách phòng...");
   const mockRooms = [
     {
       tenPhong: "Bungalow Săn Mây Tả Van",
-      khach: 2,
+      khach: 2, phongNgu: 1, giuong: 1, phongTam: 1,
       giaTien: 1200000,
-      viTri: "Sapa",
+      wifi: true, bep: false, hoBoi: false,
+      maViTri: locSapa.id,
       hinhAnh: JSON.stringify([
         "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000",
         "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1000",
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000",
       ]),
-      moTa: "Tọa lạc tại bản Tả Van, Sapa. Bungalow gỗ mộc mạc với view nhìn thẳng ra thung lũng lúa chín và biển mây buổi sáng. Thích hợp cho cặp đôi tìm kiếm sự bình yên.",
+      moTa: "Bungalow gỗ mộc mạc với view nhìn thẳng ra thung lũng lúa chín.",
     },
     {
       tenPhong: "Villa Đồi Thông Mộng Mơ",
-      khach: 8,
+      khach: 8, phongNgu: 4, giuong: 4, phongTam: 3,
       giaTien: 4500000,
-      viTri: "Đà Lạt",
+      wifi: true, bep: true, hoBoi: false, banLa: true,
+      maViTri: locDaLat.id,
       hinhAnh: JSON.stringify([
         "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=1000",
         "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?q=80&w=1000",
-        "https://images.unsplash.com/photo-1502672260266-1c1f0b0fd4eb?q=80&w=1000",
       ]),
-      moTa: "Biệt thự nguyên căn ẩn mình giữa đồi thông Đà Lạt. Sân vườn rộng rãi có khu vực nướng BBQ ngoài trời, lò sưởi củi truyền thống và ban công ngắm hoàng hôn tuyệt đẹp.",
+      moTa: "Biệt thự nguyên căn ẩn mình giữa đồi thông Đà Lạt.",
     },
     {
       tenPhong: "Penthouse Cửa Sổ Đại Dương",
-      khach: 6,
+      khach: 6, phongNgu: 3, giuong: 3, phongTam: 2,
       giaTien: 5500000,
-      viTri: "Nha Trang",
+      wifi: true, bep: true, hoBoi: true, tivi: true,
+      maViTri: locNhaTrang.id,
       hinhAnh: JSON.stringify([
         "https://images.unsplash.com/photo-1499955085172-a104c9463ece?q=80&w=1000",
-        "https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1000",
-        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000",
       ]),
-      moTa: "Căn hộ Penthouse mặt tiền đường Trần Phú, Nha Trang. Thiết kế kính toàn cảnh 360 độ ngắm trọn vnh biển. Có hồ bơi vô cực riêng tư và dàn âm thanh hiện đại.",
+      moTa: "Căn hộ Penthouse mặt tiền đường Trần Phú, Nha Trang.",
     },
     {
       tenPhong: "Căn hộ Dịch vụ Landmark 81",
-      khach: 4,
+      khach: 4, phongNgu: 2, giuong: 2, phongTam: 1,
       giaTien: 2800000,
-      viTri: "Hồ Chí Minh",
+      wifi: true, bep: true, hoBoi: true, mayGiat: true,
+      maViTri: locHCM.id,
       hinhAnh: JSON.stringify([
         "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1000",
-        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1000",
-        "https://images.unsplash.com/photo-1600566753086-00f18efc2291?q=80&w=1000",
       ]),
-      moTa: "Trải nghiệm sống đỉnh cao tại tòa tháp cao nhất Việt Nam (TP.HCM). Căn hộ thông minh, nội thất sang trọng nhập khẩu, free vé hồ bơi và phòng gym chuẩn 5 sao.",
+      moTa: "Trải nghiệm sống đỉnh cao tại tòa tháp cao nhất Việt Nam (TP.HCM).",
     },
     {
       tenPhong: "Resort Bãi Dài Kèm Hồ Bơi",
-      khach: 2,
+      khach: 2, phongNgu: 1, giuong: 1, phongTam: 1,
       giaTien: 3200000,
-      viTri: "Phú Quốc",
+      wifi: true, bep: false, hoBoi: true, dieuHoa: true,
+      maViTri: locPhuQuoc.id,
       hinhAnh: JSON.stringify([
         "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000",
-        "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=1000",
-        "https://images.unsplash.com/photo-1571896349842-33c89424de2d?q=80&w=1000",
       ]),
-      moTa: "Nằm sát bờ biển Bãi Dài, Phú Quốc. Tận hưởng bãi cát trắng mịn, bữa sáng phục vụ tận giường (Floating Breakfast) và không gian lãng mạn cho tuần trăng mật.",
+      moTa: "Nằm sát bờ biển Bãi Dài, Phú Quốc.",
     },
   ];
 
-  // Dùng vòng lặp for...of để thêm toàn bộ mảng mockRooms vào Database
   for (const roomData of mockRooms) {
-    await prisma.room.create({
-      data: roomData,
-    });
+    await prisma.room.create({ data: roomData });
   }
+  console.log(`✅ Đã tạo thành công ${mockRooms.length} căn phòng!`);
 
-  console.log(`✅ Đã tạo thành công ${mockRooms.length} căn phòng siêu đẹp!`);
-
-  // Lấy ra một căn phòng đầu tiên trong Database (Vừa được tạo từ vòng lặp ở trên)
   const phongDauTien = await prisma.room.findFirst();
 
-  // 4. Tạo Booking mẫu
+  // 5. Tạo Booking mẫu (Đã đổi tên biến theo chuẩn Swagger)
   const booking1 = await prisma.booking.create({
     data: {
       ngayDen: new Date("2026-05-01"),
       ngayDi: new Date("2026-05-05"),
       soLuongKhach: 2,
-      userId: user1.id,
-      roomId: phongDauTien.id
+      maNguoiDung: user1.id,
+      maPhong: phongDauTien.id
     }
   });
-  
   console.log("✅ Đã tạo Booking thành công cho phòng:", phongDauTien.tenPhong);
-
   console.log("🎉 Hoàn tất gieo mầm!");
 }
 
-// Chạy hàm main và tự động ngắt kết nối khi xong
 main()
-  .catch((e) => {
-    console.error("❌ Lỗi rồi:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error("❌ Lỗi rồi:", e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
