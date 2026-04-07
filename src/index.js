@@ -139,30 +139,321 @@ app.get("/auth/profile", kiemTraTheTu, async (req, res) => {
   }
 });
 
-// API Đặt phòng (BẮT BUỘC CÓ THẺ)
-app.post("/bookings", kiemTraTheTu, async (req, res) => {
+// ==========================================
+// QUẢN LÝ ĐẶT PHÒNG (BOOKING CRUD)
+// ==========================================
+
+// 1. Lấy danh sách tất cả lịch đặt phòng (GET)
+app.get('/api/dat-phong', async (req, res) => {
   try {
-    const { maPhong, ngayDen, ngayDi, soLuongKhach } = req.body;
-    const userId = req.user.userId;
+    const datPhongList = await prisma.booking.findMany();
+    res.status(200).json({ statusCode: 200, content: datPhongList });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 2. Đặt phòng mới (POST)
+app.post('/api/dat-phong', kiemTraTheTu, async (req, res) => {
+  try {
+    // Swagger gửi lên những trường này
+    const { maPhong, ngayDen, ngayDi, soLuongKhach, maNguoiDung } = req.body;
+    
+    // Bảo mật: Ưu tiên lấy ID từ thẻ Token (req.user.userId), 
+    // nếu không có thẻ (admin) thì mới lấy từ body (maNguoiDung)
+    const userId = req.user?.userId || maNguoiDung; 
 
     const newBooking = await prisma.booking.create({
       data: {
         maPhong: Number(maPhong),
-        maNguoiDung: userId,
+        maNguoiDung: Number(userId),
         ngayDen: new Date(ngayDen),
         ngayDi: new Date(ngayDi),
-        soLuongKhach: Number(soLuongKhach),
-      },
+        soLuongKhach: Number(soLuongKhach)
+      }
     });
 
-    res.status(201).json({
-      message: "Đặt phòng thành công! Chúc quý khách kỳ nghỉ vui vẻ.",
-      booking: newBooking,
-    });
+    res.status(201).json({ statusCode: 201, content: newBooking, message: "Đặt phòng thành công!" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Lỗi khi đặt phòng", error: error.message });
+    res.status(500).json({ message: "Lỗi Đặt phòng", error: error.message });
+  }
+});
+
+// 3. Lấy lịch đặt phòng theo ID (GET)
+app.get('/api/dat-phong/:id', async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id);
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    
+    if (!booking) return res.status(404).json({ message: "Không tìm thấy lịch đặt phòng này!" });
+    res.status(200).json({ statusCode: 200, content: booking });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 4. Cập nhật lịch đặt phòng (PUT) - Yêu cầu có thẻ
+app.put('/api/dat-phong/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id);
+    const { maPhong, ngayDen, ngayDi, soLuongKhach, maNguoiDung } = req.body;
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        maPhong: Number(maPhong),
+        maNguoiDung: Number(maNguoiDung),
+        ngayDen: new Date(ngayDen),
+        ngayDi: new Date(ngayDi),
+        soLuongKhach: Number(soLuongKhach)
+      }
+    });
+
+    res.status(200).json({ statusCode: 200, content: updatedBooking });
+  } catch (error) {
+    res.status(500).json({ message: "Cập nhật thất bại", error: error.message });
+  }
+});
+
+// 5. Xóa lịch đặt phòng (DELETE) - Yêu cầu có thẻ
+app.delete('/api/dat-phong/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id);
+    await prisma.booking.delete({ where: { id: bookingId } });
+    res.status(200).json({ statusCode: 200, message: "Đã xóa lịch đặt phòng!" });
+  } catch (error) {
+    res.status(500).json({ message: "Xóa thất bại", error: error.message });
+  }
+});
+
+// 6. Lấy lịch đặt phòng theo MÃ NGƯỜI DÙNG (GET) - API Đặc biệt
+app.get('/api/dat-phong/lay-theo-nguoi-dung/:MaNguoiDung', async (req, res) => {
+  try {
+    // Lấy ID người dùng từ đường dẫn
+    const maNguoiDung = Number(req.params.MaNguoiDung); 
+
+    // Tìm TẤT CẢ các đơn đặt phòng thuộc về người dùng này
+    const danhSach = await prisma.booking.findMany({
+      where: { maNguoiDung: maNguoiDung }
+    });
+
+    res.status(200).json({ statusCode: 200, content: danhSach });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// ==========================================
+// QUẢN LÝ BÌNH LUẬN (COMMENT CRUD)
+// ==========================================
+
+// 1. Lấy danh sách tất cả bình luận (GET)
+app.get('/api/binh-luan', async (req, res) => {
+  try {
+    const binhLuanList = await prisma.comment.findMany();
+    res.status(200).json({ statusCode: 200, content: binhLuanList });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 2. Thêm bình luận mới (POST) - Yêu cầu có thẻ
+app.post('/api/binh-luan', kiemTraTheTu, async (req, res) => {
+  try {
+    const { maPhong, maNguoiBinhLuan, noiDung, saoBinhLuan } = req.body;
+    
+    // Ưu tiên lấy ID từ thẻ Token để chống gian lận
+    const userId = req.user?.userId || maNguoiBinhLuan;
+
+    const newComment = await prisma.comment.create({
+      data: {
+        maPhong: Number(maPhong),
+        maNguoiBinhLuan: Number(userId),
+        ngayBinhLuan: new Date(), // Tự động lấy ngày giờ lúc khách bấm nút Gửi
+        noiDung: noiDung,
+        saoBinhLuan: Number(saoBinhLuan)
+      }
+    });
+
+    res.status(201).json({ statusCode: 201, content: newComment, message: "Đã gửi bình luận!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi thêm bình luận", error: error.message });
+  }
+});
+
+// 3. Cập nhật bình luận (PUT) - Yêu cầu có thẻ
+app.put('/api/binh-luan/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const commentId = Number(req.params.id);
+    const { noiDung, saoBinhLuan } = req.body;
+
+    // Khi sửa bình luận, ta chỉ cho phép sửa nội dung và số sao
+    const updatedComment = await prisma.comment.update({
+      where: { id: commentId },
+      data: {
+        noiDung: noiDung,
+        saoBinhLuan: Number(saoBinhLuan)
+      }
+    });
+
+    res.status(200).json({ statusCode: 200, content: updatedComment });
+  } catch (error) {
+    res.status(500).json({ message: "Cập nhật thất bại", error: error.message });
+  }
+});
+
+// 4. Xóa bình luận (DELETE) - Yêu cầu có thẻ
+app.delete('/api/binh-luan/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const commentId = Number(req.params.id);
+    await prisma.comment.delete({ where: { id: commentId } });
+    res.status(200).json({ statusCode: 200, message: "Đã xóa bình luận!" });
+  } catch (error) {
+    res.status(500).json({ message: "Xóa thất bại", error: error.message });
+  }
+});
+
+// 5. Lấy bình luận theo MÃ PHÒNG (GET) - API Đặc biệt
+app.get('/api/binh-luan/lay-binh-luan-theo-phong/:MaPhong', async (req, res) => {
+  try {
+    const maPhong = Number(req.params.MaPhong);
+
+    // Lấy tất cả bình luận của căn phòng đó
+    const danhSach = await prisma.comment.findMany({
+      where: { maPhong: maPhong }
+    });
+
+    res.status(200).json({ statusCode: 200, content: danhSach });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// ==========================================
+// QUẢN LÝ VỊ TRÍ (LOCATION CRUD)
+// ==========================================
+
+// 1. Lấy danh sách toàn bộ vị trí (GET)
+app.get('/api/vi-tri', async (req, res) => {
+  try {
+    const viTriList = await prisma.location.findMany();
+    res.status(200).json({ statusCode: 200, content: viTriList });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 2. Thêm vị trí mới (POST) - Yêu cầu có thẻ (kiemTraTheTu)
+app.post('/api/vi-tri', kiemTraTheTu, async (req, res) => {
+  try {
+    const { tenViTri, tinhThanh, quocGia, hinhAnh } = req.body;
+    
+    const newLocation = await prisma.location.create({
+      data: { tenViTri, tinhThanh, quocGia, hinhAnh }
+    });
+    
+    res.status(201).json({ statusCode: 201, content: newLocation });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 6. Phân trang và tìm kiếm Vị trí (GET)
+app.get('/api/vi-tri/phan-trang-tim-kiem', async (req, res) => {
+  try {
+    // 1. Lấy tham số từ URL (Query params). Nếu khách không gửi thì gán giá trị mặc định.
+    const pageIndex = Number(req.query.pageIndex) || 1;
+    const pageSize = Number(req.query.pageSize) || 10; 
+    const keyword = req.query.keyword || "";
+
+    // 2. Tính toán số dòng cần bỏ qua (skip)
+    const skip = (pageIndex - 1) * pageSize;
+
+    // 3. Xây dựng túi điều kiện tìm kiếm (Tìm theo Tên vị trí hoặc Tỉnh thành)
+    const dieuKien = keyword ? {
+      OR: [
+        { tenViTri: { contains: keyword, mode: 'insensitive' } },
+        { tinhThanh: { contains: keyword, mode: 'insensitive' } }
+      ]
+    } : {};
+
+    // 4. Lấy dữ liệu VÀ đếm tổng số lượng
+    const [danhSachViTri, tongSoDong] = await Promise.all([
+      prisma.location.findMany({
+        where: dieuKien,
+        skip: skip,
+        take: pageSize,
+        orderBy: { id: 'asc' }
+      }),
+      prisma.location.count({
+        where: dieuKien
+      })
+    ]);
+
+    // 5. Trả về format chuẩn mực cho Frontend làm nút bấm Phân trang
+    res.status(200).json({
+      statusCode: 200,
+      content: {
+        pageIndex: pageIndex,
+        pageSize: pageSize,
+        totalRow: tongSoDong,
+        keywords: keyword,
+        data: danhSachViTri
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 3. Lấy thông tin 1 vị trí theo ID (GET by ID)
+app.get('/api/vi-tri/:id', async (req, res) => {
+  try {
+    const viTriId = Number(req.params.id); 
+
+    const viTri = await prisma.location.findUnique({
+      where: { id: viTriId }
+    });
+
+    if (!viTri) {
+      return res.status(404).json({ message: "Không tìm thấy vị trí này!" });
+    }
+    res.status(200).json({ statusCode: 200, content: viTri });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Server", error: error.message });
+  }
+});
+
+// 4. Cập nhật thông tin vị trí (PUT) - Yêu cầu có thẻ
+app.put('/api/vi-tri/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const viTriId = Number(req.params.id);
+    const { tenViTri, tinhThanh, quocGia, hinhAnh } = req.body;
+
+    const updatedLocation = await prisma.location.update({
+      where: { id: viTriId },
+      data: { tenViTri, tinhThanh, quocGia, hinhAnh }
+    });
+
+    res.status(200).json({ statusCode: 200, content: updatedLocation });
+  } catch (error) {
+    res.status(500).json({ message: "Cập nhật thất bại, có thể ID không tồn tại", error: error.message });
+  }
+});
+
+// 5. Xóa vị trí (DELETE) - Yêu cầu có thẻ
+app.delete('/api/vi-tri/:id', kiemTraTheTu, async (req, res) => {
+  try {
+    const viTriId = Number(req.params.id);
+
+    await prisma.location.delete({
+      where: { id: viTriId }
+    });
+
+    res.status(200).json({ statusCode: 200, message: "Đã xóa vị trí thành công!" });
+  } catch (error) {
+    res.status(500).json({ message: "Xóa thất bại", error: error.message });
   }
 });
 
