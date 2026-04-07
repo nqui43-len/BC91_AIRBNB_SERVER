@@ -64,7 +64,7 @@ app.post('/auth/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Sai mật khẩu rồi anh ơi!" });
+      return res.status(401).json({ message: "Email hoặc mật khẩu nhập không đúng! Vui lòng thử lại." });
     }
 
     // 3. Mật khẩu ĐÚNG -> Tiến hành in thẻ (Tạo JWT)
@@ -98,7 +98,7 @@ const kiemTraTheTu = (req, res, next) => {
 
   // trường hợp không có JWT
   if (!tokenTuKhach) {
-    return res.status(401).json({ message: "Ê đứng lại! Anh chưa đưa thẻ (Token)!" });
+    return res.status(401).json({ message: "Vui lòng xuất trình thẻ (Token)!" });
   }
 
   try {
@@ -114,7 +114,7 @@ const kiemTraTheTu = (req, res, next) => {
     // 5. Mở cửa cho khách đi tiếp vào trong API (Cực kỳ quan trọng)
     next(); 
   } catch (error) {
-    return res.status(403).json({ message: "Thẻ giả hoặc đã hết hạn rồi nhé!" });
+    return res.status(403).json({ message: "Thẻ giả hoặc đã hết hạn!" });
   }
 };
 
@@ -133,6 +133,36 @@ app.get('/auth/profile', kiemTraTheTu, async (req, res) => {
     res.status(200).json(thongTinKhach);
   } catch (error) {
     res.status(500).json({ message: "Lỗi Server" });
+  }
+});
+
+// API Đặt phòng (BẮT BUỘC CÓ THẺ)
+app.post('/bookings', kiemTraTheTu, async (req, res) => {
+  try {
+    // 1. Lấy dữ liệu Frontend gửi lên từ Body
+    const { roomId, ngayDen, ngayDi, soLuongKhach } = req.body;
+
+    // 2. Lấy ID của khách hàng từ thẻ JWT (đã được middleware gắn vào req.user)
+    const userId = req.user.userId;
+
+    // 3. Tiến hành tạo đơn đặt phòng trong Database
+    const newBooking = await prisma.booking.create({
+      data: {
+        roomId: Number(roomId),
+        userId: userId,
+        ngayDen: new Date(ngayDen),
+        ngayDi: new Date(ngayDi),
+        soLuongKhach: Number(soLuongKhach)
+      }
+    });
+
+    res.status(201).json({
+      message: "Đặt phòng thành công! Chúc quý khách kỳ nghỉ vui vẻ.",
+      booking: newBooking
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi đặt phòng", error: error.message });
   }
 });
 
