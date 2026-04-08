@@ -4,11 +4,30 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 require("dotenv").config();
+const multer = require("multer");
+const path = require("path");
 
 const app = express();
 const prisma = new PrismaClient();
 
 app.use(express.json()); // Để Server đọc được dữ liệu JSON từ Frontend gửi lên
+
+// Mở cửa cho phép người ngoài (Browser) xem các file trong thư mục public
+app.use(express.static('public'));
+
+// Multer: Quy định nơi lưu ảnh và cách đặt tên ảnh
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Chỉ đường cất ảnh vào thư mục public/images
+    cb(null, process.cwd() + '/public/images'); 
+  },
+  filename: (req, file, cb) => {
+    // Đổi tên ảnh để không bị trùng (Thêm dải số thời gian vào trước tên gốc)
+    const tenHinhMoi = Date.now() + '-' + file.originalname;
+    cb(null, tenHinhMoi);
+  }
+});
+const upload = multer({ storage: storage }); // Tạo ra máy scan ảnh
 
 // API Đăng ký người dùng mới
 app.post("/auth/register", async (req, res) => {
@@ -454,6 +473,41 @@ app.delete('/api/vi-tri/:id', kiemTraTheTu, async (req, res) => {
     res.status(200).json({ statusCode: 200, message: "Đã xóa vị trí thành công!" });
   } catch (error) {
     res.status(500).json({ message: "Xóa thất bại", error: error.message });
+  }
+});
+
+// ==========================================
+// TRÙM CUỐI: API UPLOAD HÌNH ẢNH CHO PHÒNG
+// ==========================================
+// Lưu ý: Ta nhét máy scan `upload.single('hinhAnh')` vào giữa để nó chặn file lại, 
+// lưu vào ổ cứng, rồi mới cho đi tiếp vào hàm async
+app.post('/api/phong-thue/upload-hinh-phong', upload.single('hinhAnh'), async (req, res) => {
+  try {
+    // 1. Kiểm tra xem khách có gửi file lên không?
+    if (!req.file) {
+      return res.status(400).json({ message: "Ê! Quên đính kèm file ảnh rồi!" });
+    }
+
+    // 2. Frontend sẽ truyền Mã Phòng qua URL (Ví dụ: ?maPhong=45)
+    const maPhong = Number(req.query.maPhong);
+
+    // 3. Tạo ra đường link để xem ảnh (URL)
+    const fileUrl = `http://localhost:3000/images/${req.file.filename}`;
+
+    // 4. Lưu cái link ảnh đó vào Database cho đúng căn phòng
+    const updatedRoom = await prisma.room.update({
+      where: { id: maPhong },
+      data: { hinhAnh: fileUrl } // Ghi đè link ảnh mới
+    });
+
+    res.status(200).json({
+      statusCode: 200,
+      message: "Tải ảnh lên thành công rực rỡ!",
+      content: updatedRoom
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi Upload", error: error.message });
   }
 });
 
