@@ -6,12 +6,19 @@ const { PrismaClient } = require("@prisma/client");
 require("dotenv").config();
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs"); // Bổ sung thư viện fs (File System) có sẵn của Node.js
 
+const cors = require("cors");
 const app = express();
 const prisma = new PrismaClient();
 
+app.use(cors()); // Mở cửa cho phép mọi nguồn (Origin) có thể gọi API của Server
 app.use(express.json()); // Để Server đọc được dữ liệu JSON từ Frontend gửi lên
-
+// Tự động tạo thư mục nếu chưa có
+const dir = process.cwd() + '/public/images';
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir, { recursive: true });
+}
 // Mở cửa cho phép người ngoài (Browser) xem các file trong thư mục public
 app.use(express.static('public'));
 
@@ -116,8 +123,8 @@ const kiemTraTheTu = (req, res, next) => {
   // 1. người dùng đưa JWT lên Header Authorization theo định dạng: "Bearer <token>"
   const tokenTuKhach = req.headers.authorization;
 
-  // trường hợp không có JWT
-  if (!tokenTuKhach) {
+  // trường hợp không có JWT hoặc JWT không đúng định dạng "Bearer <token>"
+  if (!tokenTuKhach || !tokenTuKhach.startsWith("Bearer ")) {
     return res
       .status(401)
       .json({ message: "Vui lòng xuất trình thẻ (Token)!" });
